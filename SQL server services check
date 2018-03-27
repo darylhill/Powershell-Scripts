@@ -1,0 +1,55 @@
+#SCRIPT VARIABLES
+
+# Declaring "If service exists" variables
+$MSSQLSERVER_EXISTS = (get-service | where-object {$_.name -eq 'MSSQLSERVER'}).Length -gt 0;
+$SQLBrowser_EXISTS = (get-service | where-object {$_.name -eq 'SQLBrowser'}).Length -gt 0;
+$SQLSERVERAGENT_EXISTS = (get-service | where-object {$_.name -eq 'SQLSERVERAGENT'}).Length -gt 0;
+$ReportServer_EXISTS = (get-service | where-object {$_.name -eq 'ReportServer'}).Length -gt 0;
+$Analysis_EXISTS = (get-service | where-object {$_.name -eq 'MSSQLServerOLAPService'}).Length -gt 0;
+$Intergration_EXISTS = (get-service | where-object {$_.name -eq 'MsDtsServer120'}).Length -gt 0;
+
+# Declaring "If service is running" variables
+$MSSQLSERVER_RUNNING = (get-service | where-object {$_.name -eq 'MSSQLSERVER'} | Where-Object {$_.Status -eq 'Running'}).Length -gt 0;
+$SQLBrowser_RUNNING = (get-service | where-object {$_.name -eq 'SQLBrowser'} | Where-Object {$_.Status -eq 'Running'}).Length -gt 0;
+$SQLSERVERAGENT_RUNNING = (get-service | where-object {$_.name -eq 'SQLSERVERAGENT'} | Where-Object {$_.Status -eq 'Running'}).Length -gt 0;
+$ReportServer_RUNNING = (get-service | where-object {$_.name -eq 'ReportServer'} | Where-Object {$_.Status -eq 'Running'}).Length -gt 0;
+$Analysis_RUNNING = (get-service | where-object {$_.name -eq 'MSSQLServerOLAPService'} | Where-Object {$_.Status -eq 'Running'}).Length -gt 0;
+$Intergration_RUNNING = (get-service | where-object {$_.name -eq 'MsDtsServer120'} | Where-Object {$_.Status -eq 'Running'}).Length -gt 0;
+
+# Get cluster name
+$get_cluster_name = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL12.MSSQLSERVER\Cluster").ClusterName
+
+# Load SMO extension
+[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo") | out-null;
+$srv = New-Object "Microsoft.SqlServer.Management.Smo.Server" $get_cluster_name;
+# Get server properties
+$properties = $srv.Properties
+$owner_node = $properties.Item("ComputerNamePhysicalNetBIOS").Value;
+
+# MAIN SCRIPT
+
+if ($owner_node -ne $env:computername) {return -127}
+
+# SQL Server Service's running status logging to "SQLServicesScript" logs in Event Viewer
+
+# SQL Server Service
+if ($MSSQLSERVER_EXISTS) {
+    if ($MSSQLSERVER_RUNNING) {
+        Write-EventLog -LogName 'SQLServicesScript' -Source 'SQLSRV' -Message 'The SQL Server service (MSSQLSERVER) is running' -EventId 6968
+    }
+
+    else {
+        Write-EventLog -LogName 'SQLServicesScript' -Source 'SQLSRV' -Message 'The SQL Server service (MSSQLSERVER) has stopped' -EntryType 'Error' -EventId 6969
+    }
+}
+
+# SQL Browser service
+if ($SQLBrowser_EXISTS) {
+    if ($SQLBrowser_RUNNING) {
+    Write-EventLog -LogName 'SQLServicesScript' -Source 'SQLSRV' -Message 'The SQL Browser service (SQLBrowser) is running' -EventId 6970
+    }
+
+    else {
+    Write-EventLog -LogName 'SQLServicesScript' -Source 'SQLSRV' -Message 'The SQL Browser service (SQLBrowser) has stopped' -EntryType 'Error' -EventId 6971
+    }
+}
